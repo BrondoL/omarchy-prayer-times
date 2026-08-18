@@ -38,6 +38,10 @@ your local mosque follows rather than leaving the defaults.
 The defaults for a fresh install are New York City, Muslim World League and
 Standard Asr.
 
+## Screenshots
+<img width="2560" height="1440" alt="screenshot-2026-08-18_00-18-07" src="https://github.com/user-attachments/assets/160af021-64db-487c-93b2-992d191c0c50" />
+
+
 ## How it works
 
 Times come from the [Aladhan API](https://aladhan.com/prayer-times-api),
