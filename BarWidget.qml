@@ -7,7 +7,7 @@ import "Model.js" as Model
 
 BarWidget {
   id: root
-  moduleName: "ah410.prayer-times"
+  moduleName: "ah410.islamic-prayer-times"
 
   // Coordinates are read with an explicit finite check rather than `||`,
   // which would treat a perfectly valid 0 as missing and silently relocate

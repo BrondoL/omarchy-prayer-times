@@ -11,8 +11,8 @@ import "Model.js" as Model
 // for the bar row.
 Panel {
   id: root
-  moduleName: "ah410.prayer-times"
-  ipcTarget: "ah410.prayer-times"
+  moduleName: "ah410.islamic-prayer-times"
+  ipcTarget: "ah410.islamic-prayer-times"
 
   property var anchorItem: null
   property var hostWidget: null
