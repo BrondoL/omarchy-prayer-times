@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Validate and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Model.js is deliberately Qt-free and locale-free so it runs under
+      # plain node. No dependencies, so there is nothing to install.
+      - name: Check JavaScript syntax
+        run: |
+          node --check Model.js
+          for f in tests/*.js; do node --check "$f"; done
+
+      - name: Run tests
+        run: node --test tests/*.test.js
+
+      # qmlformat parses the full QML grammar without resolving imports,
+      # which qmllint would try and fail to do for the Quickshell and qs.*
+      # modules that only exist on an Omarchy install.
+      - name: Install Qt QML tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends qt6-declarative-dev-tools
+
+      - name: Check QML syntax
+        run: |
+          export PATH="/usr/lib/qt6/bin:$PATH"
+          for f in *.qml; do
+            echo "checking $f"
+            qmlformat "$f" > /dev/null
+          done
+
+      - name: Validate plugin manifest
+        run: |
+          node -e '
+            const fs = require("fs");
+            const m = JSON.parse(fs.readFileSync("manifest.json", "utf8"));
+            for (const key of ["schemaVersion", "id", "name", "version", "kinds", "entryPoints"]) {
+              if (m[key] === undefined) throw new Error(`manifest.json is missing "${key}"`);
+            }
+            for (const [kind, file] of Object.entries(m.entryPoints)) {
+              if (!fs.existsSync(file)) throw new Error(`entryPoint ${kind} points at missing file ${file}`);
+            }
+            console.log(`manifest.json ok: ${m.id} v${m.version}`);
+          '
