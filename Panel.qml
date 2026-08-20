@@ -7,8 +7,8 @@ import "Model.js" as Model
 
 // Prayer-times popup: all 5 times, current one marked, a countdown to the
 // next, and a click-to-edit location field (geocoded via the same
-// Open-Meteo endpoint the weather widget uses) plus a full/compact toggle
-// for the bar row.
+// Open-Meteo endpoint the weather widget uses) plus the bar-row layout
+// toggle and the notification settings.
 Panel {
   id: root
   moduleName: "ah410.islamic-prayer-times"
@@ -52,6 +52,8 @@ Panel {
   readonly property bool compact: setting("displayMode", "full") === "compact"
   readonly property int method: Model.sanitizeMethod(setting("method", Model.DEFAULT_METHOD))
   readonly property int school: Model.sanitizeSchool(setting("school", Model.DEFAULT_SCHOOL))
+  readonly property int notifications: Model.sanitizeNotify(setting("notifications", Model.DEFAULT_NOTIFY))
+  readonly property int reminderMinutes: Model.sanitizeReminder(setting("reminderMinutes", Model.DEFAULT_REMINDER))
 
   // A plain `new Date()` inside the countdown binding is not a reactive
   // dependency, so the text froze at whatever the time was when the day's
@@ -80,9 +82,25 @@ Panel {
     root.openPicker = root.openPicker === which ? "" : which
   }
 
-  function choicesFor(key) { return key === "method" ? Model.CALC_METHODS : Model.ASR_SCHOOLS }
-  function currentFor(key) { return key === "method" ? root.method : root.school }
-  function currentNameFor(key) { return key === "method" ? Model.methodShortName(root.method) : Model.schoolName(root.school) }
+  function choicesFor(key) {
+    if (key === "method") return Model.CALC_METHODS
+    if (key === "notifications") return Model.NOTIFY_CHOICES
+    if (key === "reminderMinutes") return Model.REMINDER_CHOICES
+    return Model.ASR_SCHOOLS
+  }
+
+  function currentFor(key) {
+    if (key === "method") return root.method
+    if (key === "notifications") return root.notifications
+    if (key === "reminderMinutes") return root.reminderMinutes
+    return root.school
+  }
+  function currentNameFor(key) {
+    if (key === "method") return Model.methodShortName(root.method)
+    if (key === "notifications") return Model.notifyName(root.notifications)
+    if (key === "reminderMinutes") return Model.reminderName(root.reminderMinutes)
+    return Model.schoolName(root.school)
+  }
 
   // Click-to-edit state for the location field.
   property bool editingLocation: false
@@ -290,7 +308,7 @@ Panel {
               Repeater {
                 model: [
                   { label: "Full", mode: "full" },
-                  { label: "Compact", mode: "compact" }
+                  { label: "Next", mode: "compact" }
                 ]
 
                 Text {
@@ -453,10 +471,11 @@ Panel {
             font.italic: true
           }
 
-          // ---- Calculation settings. Method and Asr school are not
-          //      cosmetic: Hanafi moves Asr about an hour, and the method
-          //      shifts Fajr and Isha by tens of minutes, so both have to
-          //      be the user's choice rather than the author's.
+          // ---- Calculation and notification settings. Method and Asr
+          //      school are not cosmetic: Hanafi moves Asr about an hour,
+          //      and the method shifts Fajr and Isha by tens of minutes, so
+          //      both have to be the user's choice rather than the
+          //      author's. Notify and Remind ride the same picker.
           Rectangle {
             width: parent.width
             height: Style.spacing.hairline
@@ -471,13 +490,18 @@ Panel {
             Repeater {
               model: [
                 { key: "method", label: "Method" },
-                { key: "school", label: "Asr" }
+                { key: "school", label: "Asr" },
+                { key: "notifications", label: "Notify" },
+                // Only meaningful while notifications are on, so it steps
+                // out of the way rather than sitting there dead.
+                { key: "reminderMinutes", label: "Remind", needsNotifications: true }
               ]
 
               Column {
                 id: settingRow
                 required property var modelData
                 readonly property bool expanded: root.openPicker === modelData.key
+                visible: !modelData.needsNotifications || root.notifications === 1
                 width: parent.width
                 spacing: 0
 

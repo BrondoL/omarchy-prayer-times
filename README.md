@@ -25,10 +25,12 @@ Click any prayer in the bar to open the popup. From there you can:
 
 - Click the city name to search for a different one. Pick a suggestion with
   the arrow keys or the mouse; times update as soon as it is saved.
-- Switch between **Full** (all five prayers) and **Compact** (just the current
-  prayer and the next one, with names).
+- Switch between **Full** (all five prayers) and **Next** (only the prayer you
+  are waiting for, with its name).
 - Change the **Method** used to calculate Fajr and Isha, and the **Asr**
   juristic school.
+- Turn **Notify** on or off, and pick how long before each prayer the
+  **Remind** notification arrives.
 
 Both of those calculation settings matter. Hanafi puts Asr roughly an hour
 later than Standard, and switching from Muslim World League to Umm al-Qura
@@ -37,6 +39,19 @@ your local mosque follows rather than leaving the defaults.
 
 The defaults for a fresh install are New York City, Muslim World League and
 Standard Asr.
+
+## Notifications
+
+With **Notify** on (the default) the widget sends a desktop notification when
+each prayer comes in, and a second one ahead of it — ten minutes before by
+default, adjustable from the popup or switched off entirely.
+
+They go out through `notify-send`, so they land in whatever notification
+daemon you already run. The schedule rides the widget's own minute tick and
+compares against the last minute it saw, rather than arming a timer per
+prayer: a tick that arrives late still fires, and a laptop resuming from
+suspend announces only what it just missed instead of replaying the whole
+day.
 
 ## Screenshots
 <img width="2560" height="1440" alt="screenshot-2026-08-18_00-18-07" src="https://github.com/user-attachments/assets/160af021-64db-487c-93b2-992d191c0c50" />
@@ -64,7 +79,9 @@ and is written by the popup, so you do not normally need to touch it:
 | `locationName`, `latitude`, `longitude`, `timezone` | Where prayers are calculated for |
 | `method` | Aladhan calculation method id |
 | `school` | `0` standard, `1` Hanafi |
-| `displayMode` | `full` or `compact` |
+| `displayMode` | `full`, or `compact` for the next prayer alone |
+| `notifications` | `1` on, `0` off |
+| `reminderMinutes` | Minutes before each prayer for the reminder; `0` disables it |
 
 ## License
 

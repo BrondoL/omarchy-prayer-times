@@ -5,7 +5,7 @@
   "version": "1.0.0",
   "author": "ah410",
   "license": "MIT",
-  "description": "The five daily Islamic prayer times in your bar, with the current prayer highlighted. Set your city, calculation method and Asr school from the popup.",
+  "description": "The five daily Islamic prayer times in your bar, with the current prayer highlighted, or just the next one. Notifies you when each prayer comes in. Set your city, calculation method, Asr school and reminders from the popup.",
   "kinds": ["bar-widget"],
   "entryPoints": { "barWidget": "BarWidget.qml" },
   "barWidget": {

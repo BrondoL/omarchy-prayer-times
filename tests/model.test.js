@@ -282,3 +282,100 @@ test("locationCommit is a no-op without text or a matched suggestion", () => {
   assert.strictEqual(M.locationCommit("Cairo", [], 0), null)
   assert.strictEqual(M.locationCommit("Cairo", null, 0), null)
 })
+
+// ---- Notification scheduling.
+
+const day = { Fajr: "05:00", Dhuhr: "12:30", Asr: "15:45", Maghrib: "18:20", Isha: "19:40" }
+
+test("sanitizeReminder and sanitizeNotify fall back for anything unrecognised", () => {
+  assert.strictEqual(M.sanitizeReminder("15"), 15)
+  assert.strictEqual(M.sanitizeReminder(0), 0)
+  assert.strictEqual(M.sanitizeReminder("7"), M.DEFAULT_REMINDER)
+  assert.strictEqual(M.sanitizeReminder(""), M.DEFAULT_REMINDER)
+  assert.strictEqual(M.sanitizeNotify("0"), 0)
+  assert.strictEqual(M.sanitizeNotify("nonsense"), M.DEFAULT_NOTIFY)
+})
+
+test("dueNotifications fires a prayer exactly once, on the tick that crosses it", () => {
+  const before = M.dueNotifications(day, at("12:28"), at("12:29"), 0)
+  assert.deepStrictEqual(before, [])
+
+  const crossing = M.dueNotifications(day, at("12:29"), at("12:30"), 0)
+  assert.strictEqual(crossing.length, 1)
+  assert.strictEqual(crossing[0].key, "Dhuhr")
+  assert.strictEqual(crossing[0].kind, "due")
+
+  // The next tick must not repeat it.
+  assert.deepStrictEqual(M.dueNotifications(day, at("12:30"), at("12:31"), 0), [])
+})
+
+test("dueNotifications fires the reminder ahead of the prayer", () => {
+  const reminder = M.dueNotifications(day, at("19:29"), at("19:30"), 10)
+  assert.strictEqual(reminder.length, 1)
+  assert.deepStrictEqual(
+    { key: reminder[0].key, kind: reminder[0].kind, lead: reminder[0].lead },
+    { key: "Isha", kind: "reminder", lead: 10 }
+  )
+  // ...and the prayer itself still arrives on its own minute.
+  const due = M.dueNotifications(day, at("19:39"), at("19:40"), 10)
+  assert.strictEqual(due.length, 1)
+  assert.strictEqual(due[0].kind, "due")
+})
+
+test("dueNotifications with the reminder off emits only the prayers", () => {
+  assert.deepStrictEqual(M.dueNotifications(day, at("19:29"), at("19:30"), 0), [])
+})
+
+test("dueNotifications survives a late tick without dropping the prayer", () => {
+  // Three minutes of drift: the prayer is still inside the catch-up window.
+  const late = M.dueNotifications(day, at("15:43"), at("15:46"), 0)
+  assert.strictEqual(late.length, 1)
+  assert.strictEqual(late[0].key, "Asr")
+})
+
+test("dueNotifications does not replay the day after a long suspend", () => {
+  // Laptop asleep from before Dhuhr until after Maghrib: only what falls in
+  // the clamped catch-up window may speak, never the whole afternoon.
+  const resumed = M.dueNotifications(day, at("12:00"), at("18:30"), 10)
+  assert.deepStrictEqual(resumed, [])
+
+  // Resuming right on top of a prayer still announces that one.
+  const onTop = M.dueNotifications(day, at("12:00"), at("18:22"), 0)
+  assert.strictEqual(onTop.length, 1)
+  assert.strictEqual(onTop[0].key, "Maghrib")
+})
+
+test("dueNotifications stays quiet on the first tick and on a repeated minute", () => {
+  assert.deepStrictEqual(M.dueNotifications(day, -1, at("12:30"), 10), [])
+  assert.deepStrictEqual(M.dueNotifications(day, at("12:30"), at("12:30"), 10), [])
+  assert.deepStrictEqual(M.dueNotifications(null, at("12:29"), at("12:30"), 10), [])
+})
+
+test("dueNotifications crosses midnight without losing the tick", () => {
+  const nightly = { ...day, Isha: "23:58" }
+  const crossing = M.dueNotifications(nightly, at("23:57"), at("00:01"), 0)
+  assert.strictEqual(crossing.length, 1)
+  assert.strictEqual(crossing[0].key, "Isha")
+})
+
+test("dueNotifications skips a reminder that would fall before midnight", () => {
+  // A 30-minute lead on a 00:10 Fajr belongs to yesterday, not to this tick.
+  const arctic = { ...day, Fajr: "00:10" }
+  assert.deepStrictEqual(M.dueNotifications(arctic, at("23:39"), at("23:41"), 30), [])
+})
+
+test("dueNotifications ignores a day whose times never parsed", () => {
+  assert.deepStrictEqual(M.dueNotifications({ ...day, Dhuhr: "" }, at("12:29"), at("12:30"), 0), [])
+})
+
+test("notificationText names the prayer first and carries the clock time", () => {
+  const due = M.notificationText({ key: "Isha", kind: "due", lead: 0, at: "19:40" })
+  assert.strictEqual(due.summary, "Isha")
+  assert.match(due.body, /7:40 PM/)
+
+  const reminder = M.notificationText({ key: "Fajr", kind: "reminder", lead: 15, at: "05:00" })
+  assert.strictEqual(reminder.summary, "Fajr in 15m")
+  assert.strictEqual(reminder.body, "Begins at 5:00 AM")
+
+  assert.strictEqual(M.notificationText(null), null)
+})
